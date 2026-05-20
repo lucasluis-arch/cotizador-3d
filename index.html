@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cotizador — Impresión 3D</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init({ publicKey: '_zEIVvL8DGVxKAcIp' });</script>
+<style>
+:root {
+  --bg:        #f4f2ee;
+  --surface:   #ffffff;
+  --border:    #e0ddd6;
+  --border-hi: #c4bfb5;
+  --text:      #1a1917;
+  --mid:       #605d57;
+  --muted:     #9e9a93;
+  --inv:       #f4f2ee;
+  --accent:    #d97706;
+  --accent-bg: #fffbeb;
+  --accent-bd: #fcd34d;
+  --blue:      #1d4ed8;
+  --blue-bg:   #eff6ff;
+  --blue-bd:   #93c5fd;
+  --ok:        #15803d;
+  --ok-bg:     #f0fdf4;
+  --ok-bd:     #86efac;
+  --err:       #b91c1c;
+  --err-bg:    #fef2f2;
+  --err-bd:    #fca5a5;
+  --r:         7px;
+  --sh:        0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
+  --sh-md:     0 4px 20px rgba(0,0,0,.09),0 1px 4px rgba(0,0,0,.05);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+.page{max-width:700px;margin:0 auto;padding:60px 24px 96px}
+
+/* ── Header ── */
+.hdr{margin-bottom:44px;animation:rise .4s ease both}
+.hdr-tag{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.hdr-tag::before{content:'';width:20px;height:2px;background:var(--accent);border-radius:2px}
+.hdr h1{font-size:1.9rem;font-weight:600;letter-spacing:-.028em;line-height:1.12;margin-bottom:8px}
+.hdr p{font-size:.87rem;color:var(--mid);line-height:1.65;font-weight:300;max-width:480px}
+
+/* ── Cards ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:10px;animation:rise .4s ease both}
+.card:nth-child(2){animation-delay:.04s}
+.card:nth-child(3){animation-delay:.08s}
+.card:nth-child(4){animation-delay:.12s}
+.card:nth-child(5){animation-delay:.16s}
+.card-hdr{padding:14px 20px 13px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.card-num{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.card-title{font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mid)}
+.card-body{padding:20px}
+
+/* ── Tabs ── */
+.tabs{display:flex;gap:3px;background:var(--bg);border-radius:var(--r);padding:3px;margin-bottom:20px}
+.tab{flex:1;padding:8px 6px;border:none;border-radius:5px;background:transparent;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap}
+.tab.on{background:var(--surface);color:var(--text);box-shadow:var(--sh)}
+
+/* ── Dropzone ── */
+.drop{border:1.5px dashed var(--border-hi);border-radius:var(--r);padding:32px 20px;text-align:center;cursor:pointer;transition:all .18s;background:var(--bg)}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-bg)}
+.drop:hover svg,.drop.over svg{opacity:.5;color:var(--accent)}
+.drop svg{width:26px;height:26px;margin:0 auto 10px;opacity:.2;display:block;color:var(--text);transition:all .18s}
+.drop-title{font-size:.87rem;font-weight:500;margin-bottom:3px}
+.drop-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.07em}
+#fileInput,#imgInput{display:none}
+
+/* ── Alerts ── */
+.alert{display:none;align-items:flex-start;gap:8px;margin-top:12px;padding:10px 14px;border-radius:var(--r);font-size:.82rem;line-height:1.5}
+.alert.on{display:flex}
+.alert.err{background:var(--err-bg);border:1px solid var(--err-bd);color:var(--err)}
+.alert.warn{background:var(--accent-bg);border:1px solid var(--accent-bd);color:var(--accent)}
+.alert.info{background:var(--blue-bg);border:1px solid var(--blue-bd);color:var(--blue)}
+
+/* ── Dims ── */
+.dim-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.dim-note{margin-top:10px;font-size:.78rem;color:var(--muted);font-weight:300;line-height:1.6}
+
+/* ── Fields ── */
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.field input,.field textarea{
+  background:var(--bg);border:1px solid var(--border);border-radius:var(--r);
+  padding:9px 12px;font-family:'DM Sans',sans-serif;font-size:.88rem;color:var(--text);
+  transition:border-color .15s;-moz-appearance:textfield
+}
+.field input::-webkit-outer-spin-button,.field input::-webkit-inner-spin-button{-webkit-appearance:none}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+.field input::placeholder,.field textarea::placeholder{color:var(--muted)}
+.field textarea{resize:none;line-height:1.55}
+
+/* ── Processing ── */
+.proc{display:none;align-items:center;gap:10px;padding:12px 0 0;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.08em}
+.proc.on{display:flex}
+.spinner{width:13px;height:13px;border:1.5px solid var(--border-hi);border-top-color:var(--accent);border-radius:50%;animation:spin .75s linear infinite;flex-shrink:0}
+
+/* ── Image upload preview ── */
+.img-drop{border:1.5px dashed var(--border-hi);border-radius:var(--r);padding:28px 20px;text-align:center;cursor:pointer;transition:all .18s;background:var(--bg);position:relative;overflow:hidden}
+.img-drop:hover,.img-drop.over{border-color:var(--blue);background:var(--blue-bg)}
+.img-drop svg{width:26px;height:26px;margin:0 auto 10px;opacity:.2;display:block;color:var(--text);transition:all .18s}
+.img-drop:hover svg{opacity:.45;color:var(--blue)}
+.img-preview{display:none;width:100%;max-height:200px;object-fit:contain;border-radius:5px;margin-bottom:10px}
+.img-preview.on{display:block}
+.img-rm{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.5);border:none;color:#fff;border-radius:4px;padding:3px 8px;font-size:.75rem;cursor:pointer;display:none}
+.img-rm.on{display:block}
+
+/* ── Result banner ── */
+.result{display:none;background:var(--surface);border:1px solid var(--ok-bd);border-radius:var(--r);padding:18px 20px;margin-bottom:10px;box-shadow:var(--sh);animation:rise .25s ease both}
+.result.on{display:block}
+.result-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.result-file{display:flex;align-items:center;gap:8px;font-size:.87rem;font-weight:500}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok);flex-shrink:0;box-shadow:0 0 0 2px var(--ok-bg)}
+.result-rm{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:2px 7px;border-radius:4px;transition:all .12s;line-height:1}
+.result-rm:hover{background:var(--err-bg);color:var(--err)}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-bottom:16px;background:var(--border);border-radius:var(--r);overflow:hidden}
+.stat{text-align:center;padding:12px 8px;background:var(--bg)}
+.stat-v{display:block;font-family:'DM Mono',monospace;font-size:1rem;font-weight:500}
+.stat-l{display:block;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+
+/* ── Price box ── */
+.pbox{background:var(--bg);border-radius:var(--r);padding:14px 16px;border:1px solid var(--border)}
+.pr{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;font-size:.83rem}
+.pr .l{color:var(--mid);display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.pr .v{font-family:'DM Mono',monospace;font-size:.8rem;white-space:nowrap;flex-shrink:0}
+.pr-sep{height:1px;background:var(--border);margin:8px 0}
+.pr-total{display:flex;justify-content:space-between;align-items:baseline;padding-top:6px}
+.pr-total .l{font-weight:600;font-size:.9rem}
+.pr-total .v{font-family:'DM Mono',monospace;font-size:1.3rem;font-weight:500;color:var(--text)}
+.pr-rate{font-family:'DM Mono',monospace;font-size:.72rem;color:var(--muted)}
+.pr-multi{font-family:'DM Mono',monospace;font-size:.72rem;color:var(--accent);background:var(--accent-bg);border:1px solid var(--accent-bd);border-radius:3px;padding:1px 5px}
+.pr-color-tag{font-family:'DM Mono',monospace;font-size:.72rem;padding:1px 6px;border-radius:3px}
+.pr-color-tag.save{color:var(--ok);background:var(--ok-bg);border:1px solid var(--ok-bd)}
+.pr-color-tag.extra{color:var(--blue);background:var(--blue-bg);border:1px solid var(--blue-bd)}
+
+/* ── Options ── */
+.opt-row{display:grid;gap:8px}
+.opt-row.c3{grid-template-columns:1fr 1fr 1fr}
+.opt-row.c2{grid-template-columns:1fr 1fr}
+.opt{border:1px solid var(--border);border-radius:var(--r);padding:13px 15px;cursor:pointer;transition:all .13s;background:var(--surface);user-select:none}
+.opt:hover{border-color:var(--border-hi);background:var(--bg)}
+.opt.on{border-color:var(--accent);background:var(--accent-bg)}
+.opt.on .opt-name{color:var(--accent)}
+.opt-name{font-size:.83rem;font-weight:600;display:block;margin-bottom:2px;transition:color .13s}
+.opt-desc{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.04em}
+.opt-save{font-family:'DM Mono',monospace;font-size:10px;color:var(--ok);letter-spacing:.04em}
+.opt-extra{font-family:'DM Mono',monospace;font-size:10px;color:var(--blue);letter-spacing:.04em}
+
+/* ── Qty ── */
+.qty-wrap{display:flex;align-items:center;gap:14px}
+.qty-lbl{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.qty-ctrl{display:flex;align-items:stretch;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.qty-btn{background:var(--bg);border:none;color:var(--text);width:34px;font-size:1rem;cursor:pointer;transition:background .12s;font-family:'DM Mono',monospace}
+.qty-btn:hover{background:var(--accent-bg);color:var(--accent)}
+.qty-val{font-family:'DM Mono',monospace;font-size:.9rem;font-weight:500;width:44px;display:flex;align-items:center;justify-content:center;background:var(--surface);border-left:1px solid var(--border);border-right:1px solid var(--border)}
+
+/* ── Form grid ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-grid .field.full{grid-column:1/-1}
+
+/* ── Delivery note ── */
+.delivery-note{font-size:.82rem;color:var(--mid);line-height:1.55;font-weight:300;padding:10px 14px;background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:var(--r);margin-bottom:12px}
+
+/* ── Submit buttons ── */
+.sub-btn{width:100%;padding:14px;background:var(--text);color:var(--inv);border:none;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:500;letter-spacing:.02em;cursor:pointer;transition:all .18s;margin-top:10px}
+.sub-btn:hover:not(:disabled){background:#2d2c2a;transform:translateY(-1px);box-shadow:var(--sh-md)}
+.sub-btn:disabled{opacity:.25;cursor:not-allowed;transform:none;box-shadow:none}
+.sub-btn.secondary{background:transparent;color:var(--blue);border:1.5px solid var(--blue-bd)}
+.sub-btn.secondary:hover:not(:disabled){background:var(--blue-bg);transform:translateY(-1px);box-shadow:var(--sh-md)}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:13px 17px;z-index:200;transform:translateY(70px);opacity:0;transition:all .28s cubic-bezier(.34,1.4,.64,1);max-width:300px;box-shadow:var(--sh-md)}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.ok{border-color:var(--ok-bd)}
+.toast.err{border-color:var(--err-bd)}
+.t-title{font-weight:600;font-size:.83rem;margin-bottom:3px}
+.toast.ok .t-title{color:var(--ok)}
+.toast.err .t-title{color:var(--err)}
+.t-body{color:var(--muted);font-size:.78rem;line-height:1.5}
+
+#expressSection{display:none}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+@media(max-width:540px){
+  .opt-row.c3,.opt-row.c2{grid-template-columns:1fr}
+  .form-grid{grid-template-columns:1fr}
+  .form-grid .field.full{grid-column:1}
+  .dim-grid{grid-template-columns:1fr 1fr}
+  .stats{grid-template-columns:1fr 1fr}
+  .tab{font-size:.75rem;padding:7px 4px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="hdr">
+    <div class="hdr-tag">Servicio de impresión 3D</div>
+    <h1>Solicitud de presupuesto</h1>
+    <p>Complete el formulario para recibir una cotización estimada de forma inmediata. El presupuesto final puede variar según la geometría específica de la pieza.</p>
+  </header>
+
+  <!-- 1. Pieza -->
+  <div class="card">
+    <div class="card-hdr"><div class="card-num">1</div><span class="card-title">Especificaciones de la pieza</span></div>
+    <div class="card-body">
+
+      <div class="tabs">
+        <button class="tab on" id="tabFile">Archivo STL</button>
+        <button class="tab"    id="tabDims">Dimensiones</button>
+        <button class="tab"    id="tabRef">Referencia / consulta</button>
+      </div>
+
+      <!-- Panel STL -->
+      <div id="panelFile">
+        <div class="drop" id="dropzone">
+          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16 3L28 9.5V22.5L16 29L4 22.5V9.5L16 3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="M16 3V16M16 16L28 9.5M16 16L4 9.5M16 29V16" stroke="currentColor" stroke-width="1" stroke-opacity=".5"/>
+          </svg>
+          <div class="drop-title">Arrastre su archivo STL aquí</div>
+          <div class="drop-sub" style="margin-top:4px">o haga clic para seleccionar</div>
+          <input type="file" id="fileInput" accept=".stl">
+        </div>
+        <div class="proc" id="proc"><div class="spinner"></div><span>Analizando geometría...</span></div>
+        <div class="alert err" id="stlSizeErr">La pieza supera el tamaño máximo de impresión (150 × 150 × 150 mm). No es posible cotizar esta pieza sin modificaciones.</div>
+      </div>
+
+      <!-- Panel Dims -->
+      <div id="panelDims" style="display:none">
+        <div class="dim-grid">
+          <div class="field"><label>Largo (mm)</label><input type="number" id="dimL" placeholder="0" min="0" step="0.1"></div>
+          <div class="field"><label>Ancho (mm)</label><input type="number" id="dimW" placeholder="0" min="0" step="0.1"></div>
+          <div class="field"><label>Alto (mm)</label> <input type="number" id="dimH" placeholder="0" min="0" step="0.1"></div>
+        </div>
+        <div class="alert err" id="dimSizeErr">Una o más dimensiones superan el máximo permitido de 150 mm. No es posible imprimir esta pieza.</div>
+        <p class="dim-note">El volumen se calcula como bloque sólido, por lo que el presupuesto es una estimación aproximada. Si dispone del archivo STL la cotización será más precisa: a partir del modelo se extraen el volumen real, las dimensiones exactas y la geometría de la pieza, lo que reduce el margen de error considerablemente.</p>
+      </div>
+
+      <!-- Panel Referencia -->
+      <div id="panelRef" style="display:none">
+        <div class="alert info on" style="margin-bottom:14px">
+          Si no cuenta con un archivo STL ni con las medidas exactas, puede enviarnos una imagen de referencia y una descripción. Le contactaremos para coordinar la cotización.
+        </div>
+        <div class="img-drop" id="imgDrop">
+          <img class="img-preview" id="imgPreview" alt="Vista previa">
+          <button class="img-rm" id="imgRm">Quitar</button>
+          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3" y="5" width="26" height="22" rx="2" stroke="currentColor" stroke-width="1.5"/>
+            <circle cx="10.5" cy="11.5" r="2.5" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M3 22l7-6 5 5 4-4 8 7" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+          </svg>
+          <div class="drop-title">Adjuntar imagen de referencia</div>
+          <div class="drop-sub" style="margin-top:4px">JPG, PNG, WEBP — opcional</div>
+          <input type="file" id="imgInput" accept="image/*">
+        </div>
+        <div style="margin-top:12px">
+          <div class="field">
+            <label>Descripción de la pieza</label>
+            <textarea id="refDesc" rows="4" placeholder="Describa qué necesita imprimir: forma aproximada, dimensiones estimadas, uso previsto, cantidad, color, etc."></textarea>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 2. Color (oculto en modo referencia) -->
+  <div class="card" id="cardColor">
+    <div class="card-hdr"><div class="card-num">2</div><span class="card-title">Color</span></div>
+    <div class="card-body">
+      <div class="opt-row c3">
+        <div class="opt" data-color="nopreference">
+          <span class="opt-name">Sin preferencia</span>
+          <span class="opt-save">−10 % de ahorro</span>
+        </div>
+        <div class="opt on" data-color="choice">
+          <span class="opt-name">Color a elección</span>
+          <span class="opt-desc">Precio base</span>
+        </div>
+        <div class="opt" data-color="multicolor">
+          <span class="opt-name">Multicolor</span>
+          <span class="opt-extra">+15 % sobre el base</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Cantidad y entrega (oculto en modo referencia) -->
+  <div class="card" id="cardQty">
+    <div class="card-hdr"><div class="card-num">3</div><span class="card-title">Cantidad y entrega</span></div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:18px">
+
+      <div class="qty-wrap">
+        <span class="qty-lbl">Unidades</span>
+        <div class="qty-ctrl">
+          <button class="qty-btn" id="qtyMinus">&#x2212;</button>
+          <div class="qty-val" id="qtyVal">1</div>
+          <button class="qty-btn" id="qtyPlus">&#x2B;</button>
+        </div>
+      </div>
+
+      <div>
+        <p class="delivery-note">Retiro en FADU (Facultad de Arquitectura, Diseño y Urbanismo) — fecha a coordinar.</p>
+        <div id="expressSection">
+          <div class="opt-row c2">
+            <div class="opt on" id="normalOpt">
+              <span class="opt-name">Entrega estándar</span>
+              <span class="opt-desc">Sin cargo adicional</span>
+            </div>
+            <div class="opt" id="expressOpt">
+              <span class="opt-name">Entrega en 24 horas</span>
+              <span class="opt-extra">+USD 2,00 fijo</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 4. Contacto -->
+  <div class="card">
+    <div class="card-hdr"><div class="card-num" id="contactNum">4</div><span class="card-title">Datos de contacto</span></div>
+    <div class="card-body">
+      <div class="form-grid">
+        <div class="field"><label>Nombre</label><input type="text" id="fName" placeholder="Nombre completo"></div>
+        <div class="field"><label>Correo electrónico</label><input type="email" id="fEmail" placeholder="correo@ejemplo.com"></div>
+        <div class="field full"><label>Observaciones (opcional)</label><textarea id="fNotes" rows="3" placeholder="Color específico, tolerancias, urgencia u otros detalles."></textarea></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cotización -->
+  <div class="result" id="result">
+    <div class="result-top">
+      <div class="result-file"><div class="dot"></div><span id="resultLabel">—</span></div>
+      <button class="result-rm" id="resultRm">&#x2715;</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="stat-v" id="sVol">—</span><span class="stat-l">cm³</span></div>
+      <div class="stat"><span class="stat-v" id="sWeight">—</span><span class="stat-l">gramos est.</span></div>
+      <div class="stat"><span class="stat-v" id="sTime">—</span><span class="stat-l">horas est.</span></div>
+      <div class="stat"><span class="stat-v" id="sPer100g">—</span><span class="stat-l">USD / 100 g</span></div>
+    </div>
+    <div class="pbox" id="pbox"></div>
+  </div>
+
+  <button class="sub-btn" id="subBtn" disabled>Solicitar presupuesto</button>
+
+</div>
+
+<div class="toast" id="toast"><div class="t-title" id="tTitle"></div><div class="t-body" id="tBody"></div></div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const CFG = {
+  ownerEmail:      'TU_EMAIL@gmail.com',   // <-- CAMBIAR
+  PLA_DENSITY:     1.24,
+  PLA_COST_PER_KG: 20,
+  PRINTER_WATTS:   170,
+  KWH_PRICE:       0.12,
+  WEAR_FIXED:      1,
+  PROFIT_MARGIN:   0.30,
+  COLOR_MULT:      { nopreference:1.0, choice:1.10, multicolor:1.25 },
+  CM3_PER_HOUR:    40,
+  EXPRESS_COST:    2,
+  EXPRESS_MAX_H:   6,
+  MAX_MM:          150,
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+const S = { mode:'file', file:null, imgFile:null, volumeCm3:0, tooBig:false, color:'choice', qty:1, express:false };
+
+// ── STL PARSER ────────────────────────────────────────────────────────────────
+function parseSTL(buf) {
+  const view  = new DataView(buf);
+  const head5 = String.fromCharCode(...new Uint8Array(buf,0,5));
+  let bin = head5 !== 'solid';
+  if (!bin) { const n=view.getUint32(80,true); bin=Math.abs(buf.byteLength-(84+n*50))<100; }
+  let vol=0, minX=Infinity,minY=Infinity,minZ=Infinity,maxX=-Infinity,maxY=-Infinity,maxZ=-Infinity;
+  function tv(x,y,z){
+    if(x<minX)minX=x;if(x>maxX)maxX=x;
+    if(y<minY)minY=y;if(y>maxY)maxY=y;
+    if(z<minZ)minZ=z;if(z>maxZ)maxZ=z;
+  }
+  if (bin) {
+    const n=view.getUint32(80,true);
+    for(let i=0;i<n;i++){
+      const o=84+i*50;
+      const x1=view.getFloat32(o+12,true),y1=view.getFloat32(o+16,true),z1=view.getFloat32(o+20,true);
+      const x2=view.getFloat32(o+24,true),y2=view.getFloat32(o+28,true),z2=view.getFloat32(o+32,true);
+      const x3=view.getFloat32(o+36,true),y3=view.getFloat32(o+40,true),z3=view.getFloat32(o+44,true);
+      vol+=(x1*(y2*z3-y3*z2)-y1*(x2*z3-x3*z2)+z1*(x2*y3-x3*y2))/6;
+      tv(x1,y1,z1);tv(x2,y2,z2);tv(x3,y3,z3);
+    }
+  } else {
+    const re=/vertex\s+([\d.eE+\-]+)\s+([\d.eE+\-]+)\s+([\d.eE+\-]+)/g;
+    let m,verts=[];
+    while((m=re.exec(new TextDecoder().decode(buf))))verts.push([+m[1],+m[2],+m[3]]);
+    for(let i=0;i+2<verts.length;i+=3){
+      const [x1,y1,z1]=verts[i],[x2,y2,z2]=verts[i+1],[x3,y3,z3]=verts[i+2];
+      vol+=(x1*(y2*z3-y3*z2)-y1*(x2*z3-x3*z2)+z1*(x2*y3-x3*y2))/6;
+      tv(x1,y1,z1);tv(x2,y2,z2);tv(x3,y3,z3);
+    }
+  }
+  return { volumeCm3:Math.abs(vol)/1000, dx:maxX-minX, dy:maxY-minY, dz:maxZ-minZ };
+}
+
+// ── PRECIO ────────────────────────────────────────────────────────────────────
+function calcPrice(v, color, qty, express) {
+  const matUnit    = (CFG.PLA_COST_PER_KG / CFG.PLA_DENSITY) / 1000;
+  const hours      = v / CFG.CM3_PER_HOUR;
+  const weightG    = v * CFG.PLA_DENSITY;
+  const mat        = v * matUnit;
+  const elec       = hours * (CFG.PRINTER_WATTS/1000) * CFG.KWH_PRICE;
+  const wear       = CFG.WEAR_FIXED;
+  const matPerG    = weightG > 0 ? mat / weightG : 0;
+  const baseUnit   = (mat + elec + wear) * (1 + CFG.PROFIT_MARGIN);
+  const unitPrice  = baseUnit * CFG.COLOR_MULT[color];
+  const expCost    = express ? CFG.EXPRESS_COST : 0;
+  const total      = unitPrice * qty + expCost;
+  const per100g    = weightG > 0 ? (unitPrice / weightG) * 100 : 0;
+  // Desglose visible por unidad (incluye margen)
+  const filUnit    = mat  * (1 + CFG.PROFIT_MARGIN);   // filamento
+  const tiempoUnit = (elec + wear) * (1 + CFG.PROFIT_MARGIN); // tiempo + desgaste
+  return { mat, elec, wear, matPerG, filUnit, tiempoUnit, baseUnit, unitPrice, expCost, total, hours, weightG, per100g };
+}
+
+const COLOR_LABEL = { nopreference:'Sin preferencia de color', choice:'Color a elección', multicolor:'Multicolor' };
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function render() {
+  if (!S.volumeCm3 || S.tooBig) return;
+  const p = calcPrice(S.volumeCm3, S.color, S.qty, S.express);
+
+  document.getElementById('sVol').textContent     = S.volumeCm3.toFixed(2);
+  document.getElementById('sWeight').textContent  = p.weightG.toFixed(1);
+  document.getElementById('sTime').textContent    = p.hours.toFixed(1);
+  document.getElementById('sPer100g').textContent = p.per100g.toFixed(2);
+
+  const multi = S.qty > 1;
+
+  // Fila con ×N solo para filamento y tiempo
+  const rowMulti = (label, rate, unitVal) => {
+    const rateTag = `<span class="pr-rate">${rate}</span>`;
+    const valStr  = multi
+      ? `<span class="pr-multi">&times;${S.qty}</span>&nbsp;USD&nbsp;${(unitVal*S.qty).toFixed(2)}`
+      : `USD&nbsp;${unitVal.toFixed(2)}`;
+    return `<div class="pr"><span class="l">${label} ${rateTag}</span><span class="v">${valStr}</span></div>`;
+  };
+
+  // Fila simple sin multiplicador
+  const rowSimple = (label, val, tag='') =>
+    `<div class="pr"><span class="l">${label}${tag ? ' '+tag : ''}</span><span class="v">${val}</span></div>`;
+
+  // Ajuste de color
+  let colorRow = '';
+  if (S.color === 'nopreference') {
+    const saving = (p.baseUnit * CFG.COLOR_MULT.choice - p.unitPrice) * S.qty;
+    colorRow = rowSimple('Sin preferencia de color','<span class="pr-color-tag save">−10 %</span> &minus;USD&nbsp;'+saving.toFixed(2));
+  } else if (S.color === 'multicolor') {
+    const extra = (p.unitPrice - p.baseUnit * CFG.COLOR_MULT.choice) * S.qty;
+    colorRow = rowSimple('Multicolor','<span class="pr-color-tag extra">+15 %</span> +USD&nbsp;'+extra.toFixed(2));
+  }
+
+  const exRow = S.express
+    ? rowSimple('Entrega en 24 horas', `+USD&nbsp;${p.expCost.toFixed(2)}`)
+    : '';
+
+  document.getElementById('pbox').innerHTML =
+    rowMulti('Filamento PLA', `USD&nbsp;${p.matPerG.toFixed(3)}/g`, p.filUnit) +
+    rowMulti('Tiempo de impresión', `${p.hours.toFixed(1)}&nbsp;h`, p.tiempoUnit) +
+    (colorRow || exRow ? '<div class="pr-sep"></div>' : '') +
+    colorRow + exRow +
+    `<div class="pr-sep"></div>
+    <div class="pr-total"><span class="l">Total estimado</span><span class="v">USD&nbsp;${p.total.toFixed(2)}</span></div>`;
+
+  document.getElementById('result').classList.add('on');
+
+  // Express visibility
+  const expSec = document.getElementById('expressSection');
+  if (p.hours * S.qty <= CFG.EXPRESS_MAX_H) {
+    expSec.style.display = 'block';
+  } else {
+    expSec.style.display = 'none';
+    if (S.express) setExpress(false);
+  }
+}
+
+function setExpress(val) {
+  S.express = val;
+  document.getElementById('expressOpt').classList.toggle('on',  val);
+  document.getElementById('normalOpt').classList.toggle('on',  !val);
+  render();
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function setMode(mode) {
+  S.mode = mode;
+  ['file','dims','ref'].forEach(m => {
+    document.getElementById('tab'+m.charAt(0).toUpperCase()+m.slice(1)).classList.toggle('on', m===mode);
+    document.getElementById('panel'+m.charAt(0).toUpperCase()+m.slice(1)).style.display = m===mode ? '' : 'none';
+  });
+  const isRef = mode === 'ref';
+  document.getElementById('cardColor').style.display = isRef ? 'none' : '';
+  document.getElementById('cardQty').style.display   = isRef ? 'none' : '';
+  document.getElementById('result').classList.remove('on');
+  document.getElementById('expressSection').style.display = 'none';
+  document.getElementById('contactNum').textContent = isRef ? '2' : '4';
+  if (!isRef) { S.volumeCm3 = 0; S.tooBig = false; }
+  checkSubmit();
+}
+
+document.getElementById('tabFile').addEventListener('click', () => { S.file=null; resetResult(); setMode('file'); });
+document.getElementById('tabDims').addEventListener('click', () => { S.file=null; resetResult(); setMode('dims'); });
+document.getElementById('tabRef').addEventListener('click',  () => setMode('ref'));
+
+function resetResult() {
+  S.volumeCm3 = 0; S.tooBig = false;
+  document.getElementById('result').classList.remove('on');
+}
+
+// ── DIMS ──────────────────────────────────────────────────────────────────────
+function updateDims() {
+  const l=parseFloat(document.getElementById('dimL').value)||0;
+  const w=parseFloat(document.getElementById('dimW').value)||0;
+  const h=parseFloat(document.getElementById('dimH').value)||0;
+  const errEl=document.getElementById('dimSizeErr');
+  if (l>0 && w>0 && h>0) {
+    const tooBig=l>CFG.MAX_MM||w>CFG.MAX_MM||h>CFG.MAX_MM;
+    S.tooBig=tooBig;
+    errEl.classList.toggle('on',tooBig);
+    if (!tooBig) {
+      S.volumeCm3=(l*w*h)/1000;
+      document.getElementById('resultLabel').textContent=`${l} × ${w} × ${h} mm (estimado)`;
+      render();
+    } else { resetResult(); }
+  } else {
+    S.tooBig=false; errEl.classList.remove('on'); resetResult();
+  }
+  checkSubmit();
+}
+['dimL','dimW','dimH'].forEach(id=>document.getElementById(id).addEventListener('input',updateDims));
+
+// ── DROPZONE STL ──────────────────────────────────────────────────────────────
+const dz=document.getElementById('dropzone'), fi=document.getElementById('fileInput');
+dz.addEventListener('click',()=>fi.click());
+fi.addEventListener('change',e=>{if(e.target.files[0])processFile(e.target.files[0]);});
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');if(e.dataTransfer.files[0])processFile(e.dataTransfer.files[0]);});
+
+function processFile(file) {
+  if (!file.name.toLowerCase().endsWith('.stl')) { toast('err','Formato no válido','Solo se aceptan archivos con extensión .stl'); return; }
+  S.file=file;
+  document.getElementById('proc').classList.add('on');
+  document.getElementById('result').classList.remove('on');
+  document.getElementById('stlSizeErr').classList.remove('on');
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try {
+      const {volumeCm3,dx,dy,dz:dz_}=parseSTL(e.target.result);
+      document.getElementById('proc').classList.remove('on');
+      const tooBig=dx>CFG.MAX_MM||dy>CFG.MAX_MM||dz_>CFG.MAX_MM;
+      S.tooBig=tooBig;
+      if (tooBig) { document.getElementById('stlSizeErr').classList.add('on'); S.volumeCm3=0; }
+      else { S.volumeCm3=volumeCm3; document.getElementById('resultLabel').textContent=file.name; render(); }
+      checkSubmit();
+    } catch { document.getElementById('proc').classList.remove('on'); toast('err','Error al procesar','El archivo puede estar dañado o en un formato no compatible.'); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+document.getElementById('resultRm').addEventListener('click',()=>{
+  S.file=null; fi.value=''; resetResult();
+  document.getElementById('stlSizeErr').classList.remove('on');
+  checkSubmit();
+});
+
+// ── DROPZONE IMAGEN ───────────────────────────────────────────────────────────
+const imgDrop=document.getElementById('imgDrop'), imgIn=document.getElementById('imgInput');
+const imgPreview=document.getElementById('imgPreview'), imgRm=document.getElementById('imgRm');
+imgDrop.addEventListener('click',e=>{ if(e.target===imgRm)return; imgIn.click(); });
+imgIn.addEventListener('change',e=>{ if(e.target.files[0]) loadImg(e.target.files[0]); });
+imgDrop.addEventListener('dragover',e=>{e.preventDefault();imgDrop.classList.add('over');});
+imgDrop.addEventListener('dragleave',()=>imgDrop.classList.remove('over'));
+imgDrop.addEventListener('drop',e=>{e.preventDefault();imgDrop.classList.remove('over');if(e.dataTransfer.files[0])loadImg(e.dataTransfer.files[0]);});
+
+function loadImg(file) {
+  if (!file.type.startsWith('image/')) { toast('err','Formato no válido','Solo se aceptan imágenes (JPG, PNG, WEBP).'); return; }
+  S.imgFile=file;
+  const url=URL.createObjectURL(file);
+  imgPreview.src=url; imgPreview.classList.add('on');
+  imgRm.classList.add('on');
+  imgDrop.querySelector('svg').style.display='none';
+  imgDrop.querySelector('.drop-title').style.display='none';
+  imgDrop.querySelector('.drop-sub').style.display='none';
+  checkSubmit();
+}
+
+imgRm.addEventListener('click',e=>{
+  e.stopPropagation();
+  S.imgFile=null; imgIn.value='';
+  imgPreview.classList.remove('on'); imgPreview.src='';
+  imgRm.classList.remove('on');
+  imgDrop.querySelector('svg').style.display='';
+  imgDrop.querySelector('.drop-title').style.display='';
+  imgDrop.querySelector('.drop-sub').style.display='';
+  checkSubmit();
+});
+
+// ── COLOR ─────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.opt[data-color]').forEach(el=>{
+  el.addEventListener('click',()=>{
+    document.querySelectorAll('.opt[data-color]').forEach(o=>o.classList.remove('on'));
+    el.classList.add('on'); S.color=el.dataset.color; render();
+  });
+});
+
+// ── CANTIDAD ──────────────────────────────────────────────────────────────────
+document.getElementById('qtyMinus').addEventListener('click',()=>{
+  if(S.qty>1){S.qty--;document.getElementById('qtyVal').textContent=S.qty;render();}
+});
+document.getElementById('qtyPlus').addEventListener('click',()=>{
+  if(S.qty<99){S.qty++;document.getElementById('qtyVal').textContent=S.qty;render();}
+});
+
+// ── EXPRESS ───────────────────────────────────────────────────────────────────
+document.getElementById('normalOpt').addEventListener('click', ()=>setExpress(false));
+document.getElementById('expressOpt').addEventListener('click',()=>setExpress(true));
+
+// ── VALIDACIÓN ────────────────────────────────────────────────────────────────
+function checkSubmit() {
+  const name =document.getElementById('fName').value.trim();
+  const email=document.getElementById('fEmail').value.trim();
+  const validContact = name && /\S+@\S+\.\S+/.test(email);
+  let ok;
+  if (S.mode==='ref') {
+    const desc=document.getElementById('refDesc').value.trim();
+    ok = validContact && desc.length > 0;
+  } else {
+    ok = validContact && S.volumeCm3>0 && !S.tooBig;
+  }
+  document.getElementById('subBtn').disabled = !ok;
+}
+['fName','fEmail'].forEach(id=>document.getElementById(id).addEventListener('input',checkSubmit));
+document.getElementById('refDesc').addEventListener('input',checkSubmit);
+
+// ── SUBMIT ────────────────────────────────────────────────────────────────────
+document.getElementById('subBtn').addEventListener('click',()=>{
+  const name =document.getElementById('fName').value.trim();
+  const email=document.getElementById('fEmail').value.trim();
+  const notes=document.getElementById('fNotes').value.trim();
+
+  let subject, body;
+
+  if (S.mode==='ref') {
+    const desc=document.getElementById('refDesc').value.trim();
+    subject='Consulta de impresión 3D — sin archivo STL';
+    body=
+`Consulta de impresión 3D
+=========================
+Cliente  : ${name}
+Correo   : ${email}
+
+Descripción de la pieza
+------------------------
+${desc}
+
+Imagen adjunta: ${S.imgFile ? S.imgFile.name : '(No se adjuntó imagen — el cliente deberá reenviarla por separado)'}
+
+Observaciones
+-------------
+${notes||'(Sin observaciones)'}
+
+NOTA: Esta consulta no incluye archivo STL ni dimensiones. Requiere cotización manual.`;
+  } else {
+    const p=calcPrice(S.volumeCm3, S.color, S.qty, S.express);
+    const src=S.mode==='file'
+      ?`Archivo STL: ${S.file?S.file.name:'—'}`
+      :`Dimensiones manuales: ${document.getElementById('dimL').value} × ${document.getElementById('dimW').value} × ${document.getElementById('dimH').value} mm`;
+    const colorAdj=S.color==='choice'?'Ninguno':(S.color==='nopreference'?'−10 %':'+15 %');
+    subject='Solicitud de presupuesto — Impresión 3D';
+    body=
+`Solicitud de presupuesto — Impresión 3D
+========================================
+Cliente  : ${name}
+Correo   : ${email}
+
+Pieza
+-----
+${src}
+Volumen est.  : ${S.volumeCm3.toFixed(2)} cm³
+Peso est.     : ${p.weightG.toFixed(1)} g
+Tiempo est.   : ${p.hours.toFixed(1)} h
+Precio/100 g  : USD ${p.per100g.toFixed(2)}
+Material      : PLA
+Color         : ${COLOR_LABEL[S.color]}
+Cantidad      : ${S.qty} unidad(es)
+Entrega       : ${S.express?'24 horas (+USD 2,00)':'Estándar — retiro en FADU'}
+
+Desglose interno
+-----------------
+Filamento (mat.)  : USD ${(p.mat*S.qty).toFixed(2)}
+Electricidad      : USD ${(p.elec*S.qty).toFixed(2)}
+Desgaste          : USD ${(p.wear*S.qty).toFixed(2)}
+Margen (30 %)     : incluido
+Ajuste color      : ${colorAdj} (×${CFG.COLOR_MULT[S.color].toFixed(2)})
+${S.express?`Express           : +USD ${p.expCost.toFixed(2)}\n`:''}──────────────────────────
+TOTAL             : USD ${p.total.toFixed(2)}
+
+Observaciones
+-------------
+${notes||'(Sin observaciones)'}
+${S.mode==='dims'?'\nNOTA: Presupuesto orientativo — sin archivo STL.':''}`;
+  }
+
+  const btn = document.getElementById('subBtn');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  emailjs.send('service_96e1yzo', 'template_oku6ber', {
+    subject: subject,
+    message: body,
+    email:   email,
+    cc:      email,
+  })
+  .then(() => {
+    toast('ok', S.mode==='ref' ? 'Consulta enviada' : 'Presupuesto enviado', 'Revisá tu correo — te llegará una copia en breve.');
+    btn.textContent = 'Solicitar presupuesto';
+    checkSubmit();
+  })
+  .catch(err => {
+    console.error('EmailJS:', err);
+    toast('err', 'Error al enviar', 'No se pudo enviar. Intentá de nuevo o escribinos directamente.');
+    btn.textContent = 'Solicitar presupuesto';
+    btn.disabled = false;
+  });
+});
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function toast(type,title,body){
+  const el=document.getElementById('toast');
+  document.getElementById('tTitle').textContent=title;
+  document.getElementById('tBody').textContent=body;
+  el.className=`toast ${type} show`;
+  clearTimeout(el._t);
+  el._t=setTimeout(()=>el.classList.remove('show'),4500);
+}
+</script>
+</body>
+</html>
