@@ -186,7 +186,40 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .toast.err .t-title{color:var(--err)}
 .t-body{color:var(--muted);font-size:.78rem;line-height:1.5}
 
-#expressSection{display:none}
+/* ── Infill ── */
+.infill-toggle{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.infill-toggle input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.infill-toggle-label{font-size:.87rem;font-weight:500}
+.infill-toggle-sub{font-family:'DM Mono',monospace;font-size:.72rem;color:var(--muted);font-weight:400}
+.infill-header{display:flex;align-items:baseline;gap:12px;margin-bottom:14px}
+.infill-pct{font-family:'DM Mono',monospace;font-size:1.6rem;font-weight:500;color:var(--accent);min-width:52px}
+.infill-use{font-size:.83rem;color:var(--mid);line-height:1.4}
+.slider{width:100%;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;background:var(--border);outline:none;margin-bottom:6px}
+.slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid #fff;box-shadow:var(--sh)}
+.slider::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid #fff;box-shadow:var(--sh)}
+.infill-scale{display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.06em}
+.status-badge{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:20px;font-size:.8rem;font-weight:500}
+.status-badge .dot-live{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.status-badge.online{background:var(--ok-bg);color:var(--ok);border:1px solid var(--ok-bd)}
+.status-badge.online .dot-live{background:var(--ok);animation:pulse 2s ease infinite}
+.status-badge.offline{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
+.status-badge.offline .dot-live{background:var(--muted)}
+.status-badge.weekend{background:var(--err-bg);color:var(--err);border:1px solid var(--err-bd)}
+.status-badge.weekend .dot-live{background:var(--err)}
+
+/* ── Modal ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .25s}
+.modal-overlay.on{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border-radius:12px;padding:32px 28px;max-width:400px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.18);transform:translateY(16px);transition:transform .25s}
+.modal-overlay.on .modal{transform:translateY(0)}
+.modal-icon{width:48px;height:48px;border-radius:50%;background:var(--ok-bg);border:2px solid var(--ok-bd);color:var(--ok);font-size:1.4rem;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.modal-title{font-size:1.15rem;font-weight:600;margin-bottom:10px}
+.modal-body{font-size:.87rem;color:var(--mid);line-height:1.65;margin-bottom:16px}
+.modal-hours{font-family:'DM Mono',monospace;font-size:.75rem;color:var(--muted);background:var(--bg);border-radius:var(--r);padding:8px 14px;margin-bottom:20px;display:inline-block}
+.modal-btn{background:var(--text);color:var(--inv);border:none;border-radius:var(--r);padding:11px 28px;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:500;cursor:pointer;transition:background .15s}
+.modal-btn:hover{background:#2d2c2a}
+
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(21,128,61,.4)}50%{box-shadow:0 0 0 5px rgba(21,128,61,0)}}
 
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
@@ -208,7 +241,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="hdr-tag">Servicio de impresión 3D</div>
     <h1>Solicitud de presupuesto</h1>
     <p>Complete el formulario para recibir una cotización estimada de forma inmediata. El presupuesto final puede variar según la geometría específica de la pieza.</p>
+    <div id="statusBadge" style="margin-top:14px"></div>
   </header>
+
+  <!-- Bloqueo fin de semana -->
+  <div class="alert err" id="weekendBlock" style="margin-bottom:14px">
+    No hay atención los fines de semana. Podés completar el formulario a partir del lunes de 10:00 a 22:00 hs.
+  </div>
 
   <!-- 1. Pieza -->
   <div class="card">
@@ -296,9 +335,30 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     </div>
   </div>
 
-  <!-- 3. Cantidad y entrega (oculto en modo referencia) -->
+  <!-- 3. Relleno (oculto en modo referencia) -->
+  <div class="card" id="cardInfill">
+    <div class="card-hdr"><div class="card-num">3</div><span class="card-title">Relleno</span></div>
+    <div class="card-body">
+      <label class="infill-toggle">
+        <input type="checkbox" id="infillCheck">
+        <span class="infill-toggle-label">Personalizar relleno <span class="infill-toggle-sub">— por defecto 20 %</span></span>
+      </label>
+      <div id="infillPanel" style="display:none;margin-top:18px">
+        <div class="infill-header">
+          <span class="infill-pct" id="infillPct">20%</span>
+          <span class="infill-use" id="infillUse">Figuras decorativas y ornamentos</span>
+        </div>
+        <input type="range" id="infillSlider" min="10" max="90" step="5" value="20" class="slider">
+        <div class="infill-scale">
+          <span>10%</span><span>50%</span><span>90%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Cantidad y entrega (oculto en modo referencia) -->
   <div class="card" id="cardQty">
-    <div class="card-hdr"><div class="card-num">3</div><span class="card-title">Cantidad y entrega</span></div>
+    <div class="card-hdr"><div class="card-num">4</div><span class="card-title">Cantidad y entrega</span></div>
     <div class="card-body" style="display:flex;flex-direction:column;gap:18px">
 
       <div class="qty-wrap">
@@ -361,8 +421,72 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 <div class="toast" id="toast"><div class="t-title" id="tTitle"></div><div class="t-body" id="tBody"></div></div>
 
+<!-- Modal de confirmación -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-icon">✓</div>
+    <div class="modal-title" id="modalTitle">¡Solicitud enviada!</div>
+    <p class="modal-body" id="modalBody"></p>
+    <div class="modal-hours">Lunes a viernes · 10:00 a 22:00 hs</div>
+    <button class="modal-btn" id="modalClose">Entendido</button>
+  </div>
+</div>
+
 <script>
-// ── CONFIG ────────────────────────────────────────────────────────────────────
+// ── HORARIO DE ATENCIÓN ───────────────────────────────────────────────────────
+const HORARIO = { inicio: 10, fin: 22 }; // lunes a viernes
+
+function checkHorario() {
+  const now  = new Date();
+  const dia  = now.getDay(); // 0=dom, 1=lun...6=sab
+  const hora = now.getHours();
+  const finde = dia === 0 || dia === 6;
+  const enHorario = !finde && hora >= HORARIO.inicio && hora < HORARIO.fin;
+
+  const badge = document.getElementById('statusBadge');
+  const weekendBlock = document.getElementById('weekendBlock');
+
+  if (finde) {
+    badge.innerHTML = `<span class="status-badge weekend"><span class="dot-live"></span>Sin atención — reabrimos el lunes a las 10:00</span>`;
+    weekendBlock.classList.add('on');
+  } else if (enHorario) {
+    badge.innerHTML = `<span class="status-badge online"><span class="dot-live"></span>En línea · respondemos hoy hasta las ${HORARIO.fin}:00</span>`;
+    weekendBlock.classList.remove('on');
+  } else {
+    const msg = hora < HORARIO.inicio
+      ? `Fuera de horario — abrimos hoy a las ${HORARIO.inicio}:00`
+      : `Fuera de horario — respondemos mañana a las ${HORARIO.inicio}:00`;
+    badge.innerHTML = `<span class="status-badge offline"><span class="dot-live"></span>${msg}</span>`;
+    weekendBlock.classList.remove('on');
+  }
+
+  // Deshabilitar formulario el fin de semana
+  const inputs = document.querySelectorAll('input, textarea, button:not(#modalClose)');
+  inputs.forEach(el => { if (finde) el.setAttribute('disabled',''); else el.removeAttribute('disabled'); });
+  if (finde) document.getElementById('subBtn').disabled = true;
+  else checkSubmit();
+}
+
+checkHorario();
+setInterval(checkHorario, 60000); // revisar cada minuto
+
+// ── MODAL ─────────────────────────────────────────────────────────────────────
+function showModal(title, body) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').textContent  = body;
+  document.getElementById('modalOverlay').classList.add('on');
+}
+
+document.getElementById('modalClose').addEventListener('click', () => {
+  document.getElementById('modalOverlay').classList.remove('on');
+});
+
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalOverlay'))
+    document.getElementById('modalOverlay').classList.remove('on');
+});
+
+
 const CFG = {
   ownerEmail:      'TU_EMAIL@gmail.com',   // <-- CAMBIAR
   PLA_DENSITY:     1.24,
@@ -380,7 +504,7 @@ const CFG = {
 };
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
-const S = { mode:'file', file:null, imgFile:null, volumeCm3:0, tooBig:false, color:'choice', qty:1, express:false };
+const S = { mode:'file', file:null, imgFile:null, volumeCm3:0, tooBig:false, color:'choice', qty:1, express:false, infill:0.20, infillEnabled:false };
 
 // ── STL PARSER ────────────────────────────────────────────────────────────────
 function parseSTL(buf) {
@@ -418,23 +542,24 @@ function parseSTL(buf) {
 }
 
 // ── PRECIO ────────────────────────────────────────────────────────────────────
-function calcPrice(v, color, qty, express) {
-  const matUnit    = (CFG.PLA_COST_PER_KG / CFG.PLA_DENSITY) / 1000;
-  const hours      = v / CFG.CM3_PER_HOUR;
-  const weightG    = v * CFG.PLA_DENSITY;
-  const mat        = v * matUnit;
-  const elec       = hours * (CFG.PRINTER_WATTS/1000) * CFG.KWH_PRICE;
-  const wear       = CFG.WEAR_FIXED;
-  const matPerG    = weightG > 0 ? mat / weightG : 0;
-  const baseUnit   = (mat + elec + wear) * (1 + CFG.PROFIT_MARGIN);
-  const unitPrice  = baseUnit * CFG.COLOR_MULT[color];
-  const expCost    = express ? CFG.EXPRESS_COST : 0;
-  const total      = unitPrice * qty + expCost;
-  const per100g    = weightG > 0 ? (unitPrice / weightG) * 100 : 0;
-  // Desglose visible por unidad (incluye margen)
-  const filUnit    = mat  * (1 + CFG.PROFIT_MARGIN);   // filamento
-  const tiempoUnit = (elec + wear) * (1 + CFG.PROFIT_MARGIN); // tiempo + desgaste
-  return { mat, elec, wear, matPerG, filUnit, tiempoUnit, baseUnit, unitPrice, expCost, total, hours, weightG, per100g };
+function calcPrice(v, color, qty, express, infill) {
+  // Volumen efectivo: 25% siempre sólido (paredes), 75% variable según relleno
+  const vEff     = v * (0.25 + infill * 0.75);
+  const matUnit  = (CFG.PLA_COST_PER_KG / CFG.PLA_DENSITY) / 1000;
+  const hours    = vEff / CFG.CM3_PER_HOUR;
+  const weightG  = vEff * CFG.PLA_DENSITY;
+  const mat      = vEff * matUnit;
+  const elec     = hours * (CFG.PRINTER_WATTS/1000) * CFG.KWH_PRICE;
+  const wear     = CFG.WEAR_FIXED;
+  const matPerG  = weightG > 0 ? mat / weightG : 0;
+  const baseUnit = (mat + elec + wear) * (1 + CFG.PROFIT_MARGIN);
+  const unitPrice= baseUnit * CFG.COLOR_MULT[color];
+  const expCost  = express ? CFG.EXPRESS_COST : 0;
+  const total    = unitPrice * qty + expCost;
+  const per100g  = weightG > 0 ? (unitPrice / weightG) * 100 : 0;
+  const filUnit  = mat  * (1 + CFG.PROFIT_MARGIN);
+  const tiempoUnit = (elec + wear) * (1 + CFG.PROFIT_MARGIN);
+  return { mat, elec, wear, matPerG, filUnit, tiempoUnit, baseUnit, unitPrice, expCost, total, hours, weightG, per100g, vEff };
 }
 
 const COLOR_LABEL = { nopreference:'Sin preferencia de color', choice:'Color a elección', multicolor:'Multicolor' };
@@ -448,7 +573,7 @@ function fmt(usd) {
 // ── RENDER ────────────────────────────────────────────────────────────────────
 function render() {
   if (!S.volumeCm3 || S.tooBig) return;
-  const p = calcPrice(S.volumeCm3, S.color, S.qty, S.express);
+  const p = calcPrice(S.volumeCm3, S.color, S.qty, S.express, S.infill);
 
   document.getElementById('sVol').textContent     = S.volumeCm3.toFixed(2);
   document.getElementById('sWeight').textContent  = p.weightG.toFixed(1);
@@ -523,11 +648,12 @@ function setMode(mode) {
     document.getElementById('panel'+m.charAt(0).toUpperCase()+m.slice(1)).style.display = m===mode ? '' : 'none';
   });
   const isRef = mode === 'ref';
-  document.getElementById('cardColor').style.display = isRef ? 'none' : '';
-  document.getElementById('cardQty').style.display   = isRef ? 'none' : '';
+  document.getElementById('cardColor').style.display  = isRef ? 'none' : '';
+  document.getElementById('cardInfill').style.display = isRef ? 'none' : '';
+  document.getElementById('cardQty').style.display    = isRef ? 'none' : '';
   document.getElementById('result').classList.remove('on');
   document.getElementById('expressSection').style.display = 'none';
-  document.getElementById('contactNum').textContent = isRef ? '2' : '4';
+  document.getElementById('contactNum').textContent = isRef ? '2' : '5';
   if (!isRef) { S.volumeCm3 = 0; S.tooBig = false; }
   checkSubmit();
 }
@@ -563,6 +689,21 @@ function updateDims() {
 }
 ['dimL','dimW','dimH'].forEach(id=>document.getElementById(id).addEventListener('input',updateDims));
 
+// ── CLOUDINARY UPLOAD ─────────────────────────────────────────────────────────
+const CLOUD = { name: 'dlm01dwra', preset: 'iejvwdzy' };
+
+async function uploadToCloudinary(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('upload_preset', CLOUD.preset);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD.name}/auto/upload`, {
+    method: 'POST', body: fd
+  });
+  if (!res.ok) throw new Error('Upload failed');
+  const data = await res.json();
+  return data.secure_url;
+}
+
 // ── DROPZONE STL ──────────────────────────────────────────────────────────────
 const dz=document.getElementById('dropzone'), fi=document.getElementById('fileInput');
 dz.addEventListener('click',()=>fi.click());
@@ -573,7 +714,7 @@ dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');if
 
 function processFile(file) {
   if (!file.name.toLowerCase().endsWith('.stl')) { toast('err','Formato no válido','Solo se aceptan archivos con extensión .stl'); return; }
-  S.file=file;
+  S.file=file; S.stlUrl=null;
   document.getElementById('proc').classList.add('on');
   document.getElementById('result').classList.remove('on');
   document.getElementById('stlSizeErr').classList.remove('on');
@@ -593,7 +734,7 @@ function processFile(file) {
 }
 
 document.getElementById('resultRm').addEventListener('click',()=>{
-  S.file=null; fi.value=''; resetResult();
+  S.file=null; S.stlUrl=null; fi.value=''; resetResult();
   document.getElementById('stlSizeErr').classList.remove('on');
   checkSubmit();
 });
@@ -609,7 +750,7 @@ imgDrop.addEventListener('drop',e=>{e.preventDefault();imgDrop.classList.remove(
 
 function loadImg(file) {
   if (!file.type.startsWith('image/')) { toast('err','Formato no válido','Solo se aceptan imágenes (JPG, PNG, WEBP).'); return; }
-  S.imgFile=file;
+  S.imgFile=file; S.imgUrl=null;
   const url=URL.createObjectURL(file);
   imgPreview.src=url; imgPreview.classList.add('on');
   imgRm.classList.add('on');
@@ -621,7 +762,7 @@ function loadImg(file) {
 
 imgRm.addEventListener('click',e=>{
   e.stopPropagation();
-  S.imgFile=null; imgIn.value='';
+  S.imgFile=null; S.imgUrl=null; imgIn.value='';
   imgPreview.classList.remove('on'); imgPreview.src='';
   imgRm.classList.remove('on');
   imgDrop.querySelector('svg').style.display='';
@@ -630,7 +771,46 @@ imgRm.addEventListener('click',e=>{
   checkSubmit();
 });
 
-// ── COLOR ─────────────────────────────────────────────────────────────────────
+// ── RELLENO ───────────────────────────────────────────────────────────────────
+const INFILL_LABELS = {
+  10: 'Piezas de exhibición sin manipulación',
+  15: 'Llaveros, letras y accesorios decorativos',
+  20: 'Figuras decorativas y ornamentos',
+  25: 'Prototipos de diseño y conceptos',
+  30: 'Maquetas y modelos de presentación',
+  35: 'Modelos de estudio con manipulación ocasional',
+  40: 'Piezas livianas de uso frecuente',
+  45: 'Componentes de baja carga mecánica',
+  50: 'Piezas de ensamble y articulaciones',
+  55: 'Piezas funcionales de uso moderado',
+  60: 'Estructuras con carga media',
+  65: 'Soportes, herrajes y fijaciones',
+  70: 'Piezas con esfuerzo mecánico continuo',
+  75: 'Componentes estructurales livianos',
+  80: 'Piezas funcionales de alta resistencia',
+  85: 'Elementos de fijación y anclaje',
+  90: 'Máxima resistencia — uso industrial o estructural',
+};
+
+document.getElementById('infillCheck').addEventListener('change', e => {
+  S.infillEnabled = e.target.checked;
+  document.getElementById('infillPanel').style.display = e.target.checked ? 'block' : 'none';
+  if (!e.target.checked) { S.infill = 0.20; }
+  render();
+});
+
+document.getElementById('infillSlider').addEventListener('input', e => {
+  const pct = parseInt(e.target.value);
+  S.infill = pct / 100;
+  document.getElementById('infillPct').textContent = pct + '%';
+  document.getElementById('infillUse').textContent = INFILL_LABELS[pct] || '';
+  // Actualizar color del slider según porcentaje
+  const ratio = (pct - 10) / 80;
+  e.target.style.background = `linear-gradient(to right, var(--accent) ${ratio*100}%, var(--border) ${ratio*100}%)`;
+  render();
+});
+
+
 document.querySelectorAll('.opt[data-color]').forEach(el=>{
   el.addEventListener('click',()=>{
     document.querySelectorAll('.opt[data-color]').forEach(o=>o.classList.remove('on'));
@@ -668,10 +848,36 @@ function checkSubmit() {
 document.getElementById('refDesc').addEventListener('input',checkSubmit);
 
 // ── SUBMIT ────────────────────────────────────────────────────────────────────
-document.getElementById('subBtn').addEventListener('click',()=>{
+document.getElementById('subBtn').addEventListener('click', async () => {
   const name =document.getElementById('fName').value.trim();
   const email=document.getElementById('fEmail').value.trim();
   const notes=document.getElementById('fNotes').value.trim();
+
+  const btn = document.getElementById('subBtn');
+  btn.disabled = true;
+  btn.textContent = 'Subiendo archivos...';
+
+  // Subir archivos a Cloudinary si corresponde
+  let stlUrl = '(sin archivo)';
+  let imgUrl = '(sin imagen)';
+
+  try {
+    if (S.mode === 'file' && S.file) {
+      btn.textContent = 'Subiendo STL...';
+      stlUrl = await uploadToCloudinary(S.file);
+    }
+    if (S.imgFile) {
+      btn.textContent = 'Subiendo imagen...';
+      imgUrl = await uploadToCloudinary(S.imgFile);
+    }
+  } catch {
+    toast('err', 'Error al subir archivo', 'No se pudo subir el archivo. Verificá tu conexión e intentá de nuevo.');
+    btn.textContent = 'Solicitar presupuesto';
+    btn.disabled = false;
+    return;
+  }
+
+  btn.textContent = 'Enviando...';
 
   let subject, body;
 
@@ -688,7 +894,7 @@ Descripción de la pieza
 ------------------------
 ${desc}
 
-Imagen adjunta: ${S.imgFile ? S.imgFile.name : '(No se adjuntó imagen — el cliente deberá reenviarla por separado)'}
+Imagen de referencia: ${imgUrl}
 
 Observaciones
 -------------
@@ -696,9 +902,9 @@ ${notes||'(Sin observaciones)'}
 
 NOTA: Esta consulta no incluye archivo STL ni dimensiones. Requiere cotización manual.`;
   } else {
-    const p=calcPrice(S.volumeCm3, S.color, S.qty, S.express);
+    const p=calcPrice(S.volumeCm3, S.color, S.qty, S.express, S.infill);
     const src=S.mode==='file'
-      ?`Archivo STL: ${S.file?S.file.name:'—'}`
+      ?`Archivo STL : ${S.file?S.file.name:'—'}\nDescarga    : ${stlUrl}`
       :`Dimensiones manuales: ${document.getElementById('dimL').value} × ${document.getElementById('dimW').value} × ${document.getElementById('dimH').value} mm`;
     const colorAdj=S.color==='choice'?'Ninguno':(S.color==='nopreference'?'−10 %':'+15 %');
     subject='Solicitud de presupuesto — Impresión 3D';
@@ -714,8 +920,8 @@ ${src}
 Volumen est.  : ${S.volumeCm3.toFixed(2)} cm³
 Peso est.     : ${p.weightG.toFixed(1)} g
 Tiempo est.   : ${p.hours.toFixed(1)} h
-Precio/100 g  : USD ${p.per100g.toFixed(2)}
 Material      : PLA
+Relleno       : ${S.infillEnabled ? Math.round(S.infill*100)+'% — '+INFILL_LABELS[Math.round(S.infill*100)] : '20% (por defecto)'}
 Color         : ${COLOR_LABEL[S.color]}
 Cantidad      : ${S.qty} unidad(es)
 Entrega       : ${S.express?'24 horas (+USD 2,00)':'Estándar — retiro en FADU'}
@@ -728,17 +934,13 @@ Desgaste          : USD ${(p.wear*S.qty).toFixed(2)}
 Margen (30 %)     : incluido
 Ajuste color      : ${colorAdj} (×${CFG.COLOR_MULT[S.color].toFixed(2)})
 ${S.express?`Express           : +USD ${p.expCost.toFixed(2)}\n`:''}──────────────────────────
-TOTAL             : USD ${p.total.toFixed(2)}
+TOTAL             : USD ${p.total.toFixed(2)} / $ ${Math.round(p.total*CFG.UYU_RATE).toLocaleString('es-UY')}
 
 Observaciones
 -------------
 ${notes||'(Sin observaciones)'}
 ${S.mode==='dims'?'\nNOTA: Presupuesto orientativo — sin archivo STL.':''}`;
   }
-
-  const btn = document.getElementById('subBtn');
-  btn.disabled = true;
-  btn.textContent = 'Enviando...';
 
   emailjs.send('service_96e1yzo', 'template_oku6ber', {
     subject: subject,
@@ -747,7 +949,14 @@ ${S.mode==='dims'?'\nNOTA: Presupuesto orientativo — sin archivo STL.':''}`;
     cc:      email,
   })
   .then(() => {
-    toast('ok', S.mode==='ref' ? 'Consulta enviada' : 'Presupuesto enviado', 'Revisá tu correo — te llegará una copia en breve.');
+    const isRef = S.mode === 'ref';
+    toast('ok', isRef ? 'Consulta enviada' : 'Presupuesto enviado', 'Revisá tu correo — te llegará una copia en breve.');
+    showModal(
+      isRef ? '¡Consulta recibida!' : '¡Presupuesto enviado!',
+      isRef
+        ? 'Me pondré en contacto a la brevedad para coordinar los detalles y darte un presupuesto personalizado.'
+        : 'Recibí tu solicitud. Me pondré en contacto para coordinar la entrega y confirmar el pedido.'
+    );
     btn.textContent = 'Solicitar presupuesto';
     checkSubmit();
   })
