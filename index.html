@@ -399,7 +399,7 @@ body{animation:gridMove 4s linear infinite}
       <!-- Panel Referencia -->
       <div id="panelRef" style="display:none">
         <div class="alert info on" style="margin-bottom:14px">
-          Si no cuenta con un archivo STL ni con las medidas exactas, puede enviarnos una imagen de referencia y una descripción. Le contactaremos para coordinar la cotización.
+          Si no cuenta con un archivo STL ni con las medidas exactas, puede enviarme una imagen de referencia y una descripción. Me pondré en contacto para coordinar la cotización.
         </div>
         <div class="img-drop" id="imgDrop">
           <img class="img-preview" id="imgPreview" alt="Vista previa">
@@ -558,14 +558,14 @@ function checkHorario() {
   const weekendBlock = document.getElementById('weekendBlock');
 
   if (finde) {
-    badge.innerHTML = `<span class="status-badge weekend"><span class="dot-live"></span>Sin atención — reabrimos el lunes a las 10:00</span>`;
+    badge.innerHTML = `<span class="status-badge weekend"><span class="dot-live"></span>Sin atención — retomo el lunes a las 10:00</span>`;
     weekendBlock.classList.add('on');
-  } else if (enHorario) {    badge.innerHTML = `<span class="status-badge online"><span class="dot-live"></span>En línea · respondemos hoy hasta las ${HORARIO.fin}:00</span>`;
+  } else if (enHorario) {    badge.innerHTML = `<span class="status-badge online"><span class="dot-live"></span>En línea · respondo hoy hasta las ${HORARIO.fin}:00</span>`;
     weekendBlock.classList.remove('on');
   } else {
     const msg = hora < HORARIO.inicio
       ? `Fuera de horario — abrimos hoy a las ${HORARIO.inicio}:00`
-      : `Fuera de horario — respondemos mañana a las ${HORARIO.inicio}:00`;
+      : `Fuera de horario — respondo mañana a las ${HORARIO.inicio}:00`;
     badge.innerHTML = `<span class="status-badge offline"><span class="dot-live"></span>${msg}</span>`;
     weekendBlock.classList.remove('on');
   }
@@ -1121,7 +1121,7 @@ ${S.mode==='dims'?'\nNOTA: Presupuesto orientativo — sin archivo STL.':''}`;
   })
   .catch(err => {
     console.error('EmailJS:', err);
-    toast('err', 'Error al enviar', 'No se pudo enviar. Intentá de nuevo o escribinos directamente.');
+    toast('err', 'Error al enviar', 'No se pudo enviar. Intentá de nuevo o escribime directamente.');
     btn.textContent = 'Solicitar presupuesto';
     btn.disabled = false;
   });
