@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cotizador — Impresión 3D</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%230f0f0f'/><path d='M16 4L28 10.5V21.5L16 28L4 21.5V10.5L16 4Z' stroke='%23f97316' stroke-width='2' fill='none'/><path d='M16 4V16M16 16L28 10.5M16 16L4 10.5M16 28V16' stroke='%23f97316' stroke-width='1' opacity='0.5'/></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script>emailjs.init({ publicKey: '_zEIVvL8DGVxKAcIp' });</script>
@@ -222,7 +223,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .weekend-overlay.on{display:flex}
 
 /* Cintas diagonales */
-.weekend-tape-wrap{position:absolute;inset:-50%;display:flex;flex-direction:column;gap:60px;transform:rotate(-20deg);pointer-events:none}
+.weekend-tape-wrap{position:absolute;inset:-20%;display:flex;flex-direction:column;gap:48px;transform:rotate(-15deg);pointer-events:none;width:140%;left:-20%}
 .weekend-tape{white-space:nowrap;padding:14px 0;border-top:1px solid rgba(248,113,113,.2);border-bottom:1px solid rgba(248,113,113,.2);overflow:hidden}
 .weekend-tape span{display:inline-block;font-family:var(--mono);font-size:13px;font-weight:500;letter-spacing:.2em;color:rgba(248,113,113,.25)}
 @keyframes tapeMove{from{transform:translateX(0)}to{transform:translateX(-50%)}}
@@ -764,6 +765,9 @@ function render() {
     el.style.animation = '';
   });
 
+  // Título dinámico
+  document.title = `$ ${Math.round(p.total * CFG.UYU_RATE).toLocaleString('es-UY')} — Cotizador 3D`;
+
   // Animar total
   animateCount('totalVal', p.total);
 
@@ -819,6 +823,7 @@ document.getElementById('tabRef').addEventListener('click',  () => {
 function resetResult() {
   S.volumeCm3 = 0; S.tooBig = false;
   document.getElementById('result').classList.remove('on');
+  document.title = 'Cotizador — Impresión 3D';
 }
 
 // ── DIMS ──────────────────────────────────────────────────────────────────────
