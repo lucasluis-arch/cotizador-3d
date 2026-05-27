@@ -188,29 +188,27 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .modal-btn:hover{background:#ea6a0a}
 #expressSection{display:none}
 
-/* ── Carrusel ── */
+/* ── Carrusel cinta ── */
 .carousel-section{margin-bottom:32px;animation:rise .5s ease both}
 .carousel-label{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:10px}
 .carousel-label::before{content:'';width:20px;height:1px;background:var(--border)}
 .carousel-label::after{content:'';flex:1;height:1px;background:var(--border)}
-.carousel-wrap{position:relative}
-.carousel-track{display:flex;gap:10px;overflow:hidden}
-.carousel-item{flex:0 0 calc(33.33% - 7px);background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;transition:border-color .2s,transform .2s;cursor:default;position:relative}
-.carousel-item:hover{border-color:var(--border-hi);transform:translateY(-2px)}
-.carousel-item img{width:100%;aspect-ratio:1;object-fit:cover;display:block;filter:grayscale(20%);transition:filter .3s}
+.carousel-outer{overflow:hidden;position:relative}
+.carousel-outer::before,.carousel-outer::after{content:'';position:absolute;top:0;bottom:0;width:60px;z-index:2;pointer-events:none}
+.carousel-outer::before{left:0;background:linear-gradient(to right,var(--bg),transparent)}
+.carousel-outer::after{right:0;background:linear-gradient(to left,var(--bg),transparent)}
+.carousel-track{display:flex;gap:10px;width:max-content}
+.carousel-track.running{animation:cinta 30s linear infinite}
+.carousel-track.running:hover{animation-play-state:paused}
+.carousel-item{flex:0 0 200px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;transition:border-color .2s,transform .2s}
+.carousel-item:hover{border-color:var(--accent);transform:translateY(-3px)}
+.carousel-item img{width:100%;height:150px;object-fit:cover;display:block;filter:grayscale(25%);transition:filter .3s}
 .carousel-item:hover img{filter:grayscale(0%)}
 .carousel-info{padding:10px 12px;border-top:1px solid var(--border)}
-.carousel-desc{font-size:.8rem;font-weight:500;color:var(--text);display:block;margin-bottom:3px;text-transform:capitalize}
-.carousel-price{font-family:var(--mono);font-size:.82rem;color:var(--accent)}
-.carousel-btn{position:absolute;top:50%;transform:translateY(-50%);background:var(--surface);border:1px solid var(--border);color:var(--text);width:32px;height:32px;border-radius:2px;cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center;transition:all .15s;z-index:2}
-.carousel-btn:hover{background:var(--accent);border-color:var(--accent);color:var(--inv)}
-.carousel-prev{left:-16px}
-.carousel-next{right:-16px}
-.carousel-dots{display:flex;justify-content:center;gap:6px;margin-top:10px}
-.carousel-dot{width:5px;height:5px;border-radius:50%;background:var(--border);border:none;cursor:pointer;transition:all .2s;padding:0}
-.carousel-dot.on{background:var(--accent);width:16px;border-radius:3px}
-.carousel-empty{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;padding:24px;letter-spacing:.08em}
-@media(max-width:540px){.carousel-item{flex:0 0 calc(50% - 5px)}.carousel-prev{left:-12px}.carousel-next{right:-12px}}
+.carousel-desc{font-size:.78rem;font-weight:500;color:var(--text);display:block;margin-bottom:3px;text-transform:capitalize}
+.carousel-price{font-family:var(--mono);font-size:.8rem;color:var(--accent)}
+@keyframes cinta{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media(max-width:540px){.carousel-item{flex:0 0 160px}.carousel-item img{height:120px}}
 
 /* Shimmer en números de paso */
 @keyframes numShimmer{0%,100%{box-shadow:0 0 0 0 rgba(249,115,22,0)}40%{box-shadow:0 0 0 4px rgba(249,115,22,.3)}60%{box-shadow:0 0 0 6px rgba(249,115,22,0)}}
@@ -338,12 +336,9 @@ body{animation:gridMove 4s linear infinite}
   <!-- Carrusel de trabajos -->
   <div class="carousel-section" id="carouselSection" style="display:none">
     <div class="carousel-label">Trabajos realizados</div>
-    <div class="carousel-wrap">
-      <button class="carousel-btn carousel-prev" id="carouselPrev">&#x2190;</button>
+    <div class="carousel-outer">
       <div class="carousel-track" id="carouselTrack"></div>
-      <button class="carousel-btn carousel-next" id="carouselNext">&#x2192;</button>
     </div>
-    <div class="carousel-dots" id="carouselDots"></div>
   </div>
 
   <!-- Bloqueo fin de semana -->
@@ -577,7 +572,7 @@ body{animation:gridMove 4s linear infinite}
 </div>
 
 <script>
-// ── CARRUSEL ──────────────────────────────────────────────────────────────────
+// ── CARRUSEL CINTA ────────────────────────────────────────────────────────────
 const GITHUB = {
   user: 'lucasluis-arch',
   repo: 'cotizador-3d',
@@ -585,7 +580,6 @@ const GITHUB = {
 };
 
 function parseFileName(name) {
-  // gatito-decorativo-92.jpg → { desc: "Gatito decorativo", precio: 92 }
   const base = name.replace(/\.(jpg|jpeg|png|webp)$/i, '');
   const parts = base.split('-');
   const lastPart = parts[parts.length - 1];
@@ -604,50 +598,28 @@ async function loadCarousel() {
     if (!imgs.length) return;
 
     const track = document.getElementById('carouselTrack');
-    const dots  = document.getElementById('carouselDots');
     const section = document.getElementById('carouselSection');
 
-    const perPage = window.innerWidth <= 540 ? 2 : 3;
-    let current = 0;
-    const pages = Math.ceil(imgs.length / perPage);
-
-    // Armar items
-    track.innerHTML = imgs.map(f => {
+    // Construir items — duplicados para efecto infinito
+    const buildItems = () => imgs.map(f => {
       const { desc, precio } = parseFileName(f.name);
       const url = `https://raw.githubusercontent.com/${GITHUB.user}/${GITHUB.repo}/${GITHUB.branch}/fotos/${f.name}`;
-      return `
-        <div class="carousel-item">
-          <img src="${url}" alt="${desc}" loading="lazy">
-          <div class="carousel-info">
-            <span class="carousel-desc">${desc}</span>
-            ${precio ? `<span class="carousel-price">$ ${precio.toLocaleString('es-UY')}</span>` : ''}
-          </div>
-        </div>`;
+      return `<div class="carousel-item">
+        <img src="${url}" alt="${desc}" loading="lazy">
+        <div class="carousel-info">
+          <span class="carousel-desc">${desc}</span>
+          ${precio ? `<span class="carousel-price">$ ${precio.toLocaleString('es-UY')}</span>` : ''}
+        </div>
+      </div>`;
     }).join('');
 
-    // Dots
-    for (let i = 0; i < pages; i++) {
-      const dot = document.createElement('button');
-      dot.className = 'carousel-dot' + (i === 0 ? ' on' : '');
-      dot.addEventListener('click', () => goTo(i));
-      dots.appendChild(dot);
-    }
+    // Duplicar 3 veces para que la cinta nunca se vea vacía
+    track.innerHTML = buildItems() + buildItems() + buildItems();
 
-    function goTo(page) {
-      current = Math.max(0, Math.min(page, pages - 1));
-      const itemW = track.querySelector('.carousel-item').offsetWidth + 10;
-      track.style.transform = `translateX(-${current * perPage * itemW}px)`;
-      track.style.transition = 'transform .4s cubic-bezier(.34,1.2,.64,1)';
-      dots.querySelectorAll('.carousel-dot').forEach((d, i) => d.classList.toggle('on', i === current));
-    }
-
-    document.getElementById('carouselPrev').addEventListener('click', () => goTo(current - 1));
-    document.getElementById('carouselNext').addEventListener('click', () => goTo(current + 1));
-
-    // Auto-avance cada 4s
-    let autoTimer = setInterval(() => goTo((current + 1) % pages), 4000);
-    track.addEventListener('mouseenter', () => clearInterval(autoTimer));
-    track.addEventListener('mouseleave', () => { autoTimer = setInterval(() => goTo((current + 1) % pages), 4000); });
+    // Calcular duración según cantidad de fotos (más fotos = más lento)
+    const duration = Math.max(20, imgs.length * 6);
+    track.style.animationDuration = duration + 's';
+    track.classList.add('running');
 
     section.style.display = 'block';
 
