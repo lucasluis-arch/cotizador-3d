@@ -741,9 +741,12 @@ async function loadColors() {
 
     // Color actual para "sin preferencia"
     try {
-      const resActual = await fetch(`https://raw.githubusercontent.com/${GITHUB.user}/${GITHUB.repo}/${GITHUB.branch}/color-actual.txt?t=${Date.now()}`);
+      const resActual = await fetch(`https://api.github.com/repos/${GITHUB.user}/${GITHUB.repo}/contents/color-actual.txt`, {
+        headers: { 'Cache-Control': 'no-cache' }
+      });
       if (resActual.ok) {
-        const colorActual = (await resActual.text()).trim().toLowerCase();
+        const data = await resActual.json();
+        const colorActual = atob(data.content).trim().toLowerCase();
         const match = availableColors.find(c => c.nombre.toLowerCase() === colorActual)
           || availableColors.find(c => c.nombre.toLowerCase().includes(colorActual));
         if (match) {
