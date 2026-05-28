@@ -188,7 +188,17 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .modal-btn:hover{background:#ea6a0a}
 #expressSection{display:none}
 
-/* ── Selector de colores ── */
+/* ── Código promocional ── */
+.promo-wrap{margin-bottom:8px;animation:rise .3s ease both}
+.promo-row{display:flex;gap:8px}
+.promo-row input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;font-family:var(--mono);font-size:.85rem;color:var(--text);letter-spacing:.06em;text-transform:uppercase;transition:border-color .15s}
+.promo-row input:focus{outline:none;border-color:var(--accent);background:var(--surface2)}
+.promo-row input::placeholder{color:var(--muted);text-transform:none;letter-spacing:0}
+.promo-btn{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 18px;font-family:var(--mono);font-size:.8rem;color:var(--text);cursor:pointer;transition:all .15s;white-space:nowrap;letter-spacing:.06em}
+.promo-btn:hover{border-color:var(--accent);color:var(--accent)}
+.promo-feedback{font-family:var(--mono);font-size:.78rem;margin-top:6px;padding:6px 10px;border-radius:var(--r);display:none}
+.promo-feedback.ok{display:block;background:var(--ok-bg);border:1px solid var(--ok-bd);color:var(--ok)}
+.promo-feedback.err{display:block;background:var(--err-bg);border:1px solid var(--err-bd);color:var(--err)}
 .color-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px;margin-bottom:12px}
 .color-chip{border:2px solid var(--border);border-radius:var(--r);overflow:hidden;cursor:pointer;transition:all .15s;position:relative}
 .color-chip:hover{border-color:var(--border-hi);transform:translateY(-2px)}
@@ -597,6 +607,15 @@ body{animation:gridMove 4s linear infinite}
     <div class="pbox" id="pbox"></div>
   </div>
 
+  <!-- Código promocional -->
+  <div class="promo-wrap" id="promoWrap" style="display:none">
+    <div class="promo-row">
+      <input type="text" id="promoInput" placeholder="Código promocional" autocomplete="off" spellcheck="false">
+      <button class="promo-btn" id="promoBtn">Aplicar</button>
+    </div>
+    <div class="promo-feedback" id="promoFeedback"></div>
+  </div>
+
   <button class="sub-btn" id="subBtn" disabled>Solicitar presupuesto</button>
 
 </div>
@@ -723,7 +742,55 @@ document.getElementById('modalOverlay').addEventListener('click', e => {
     document.getElementById('modalOverlay').classList.remove('on');
 });
 
-// ── COLORES DINÁMICOS ─────────────────────────────────────────────────────────
+// ── CÓDIGOS PROMOCIONALES ─────────────────────────────────────────────────────
+let promoCodes   = [];
+let promoApplied = null; // { codigo, descuento }
+
+async function loadPromoCodes() {
+  try {
+    const res = await fetch(`https://raw.githubusercontent.com/${GITHUB.user}/${GITHUB.repo}/${GITHUB.branch}/codigos.json?t=${Date.now()}`);
+    if (!res.ok) return;
+    promoCodes = await res.json();
+  } catch(e) {}
+}
+
+function applyPromo() {
+  const input = document.getElementById('promoInput').value.trim().toUpperCase();
+  const fb    = document.getElementById('promoFeedback');
+  const today = new Date().toISOString().split('T')[0];
+
+  if (!input) return;
+
+  const code = promoCodes.find(c => c.codigo.toUpperCase() === input);
+
+  if (!code) {
+    fb.textContent = 'Código no válido.';
+    fb.className = 'promo-feedback err';
+    promoApplied = null;
+    render();
+    return;
+  }
+
+  if (code.expira && today > code.expira) {
+    fb.textContent = `El código ${code.codigo} venció el ${code.expira}.`;
+    fb.className = 'promo-feedback err';
+    promoApplied = null;
+    render();
+    return;
+  }
+
+  promoApplied = code;
+  fb.textContent = `Código ${code.codigo} aplicado — ${code.descuento} % de descuento.`;
+  fb.className = 'promo-feedback ok';
+  render();
+}
+
+document.getElementById('promoBtn').addEventListener('click', applyPromo);
+document.getElementById('promoInput').addEventListener('keydown', e => { if (e.key === 'Enter') applyPromo(); });
+
+loadPromoCodes();
+
+
 let availableColors = [];
 let selectedColors  = [];
 
@@ -874,7 +941,8 @@ function calcPrice(v, color, qty, express, infill) {
   const baseUnit = (mat + elec + wear) * (1 + CFG.PROFIT_MARGIN);
   const unitPrice= baseUnit * CFG.COLOR_MULT[color];
   const expCost  = express ? CFG.EXPRESS_COST : 0;
-  const total    = unitPrice * qty + expCost;
+  const promoDisc = promoApplied ? (1 - promoApplied.descuento / 100) : 1;
+  const total    = unitPrice * qty * promoDisc + expCost;
   const per100g  = weightG > 0 ? (unitPrice / weightG) * 100 : 0;
   const filUnit  = mat  * (1 + CFG.PROFIT_MARGIN);
   const tiempoUnit = (elec + wear) * (1 + CFG.PROFIT_MARGIN);
@@ -958,13 +1026,20 @@ function render() {
     ? rowSimple('Entrega en 24 horas', `+${fmt(p.expCost)}`)
     : '';
 
+  const promoRow = promoApplied
+    ? `<div class="pr"><span class="l" style="color:var(--ok)">Descuento ${promoApplied.codigo} (−${promoApplied.descuento} %)</span><span class="v" style="color:var(--ok)">−${fmt(p.unitPrice * S.qty * (promoApplied.descuento/100))}</span></div>`
+    : '';
+
   document.getElementById('pbox').innerHTML =
     rowMulti('Filamento PLA', `$\u202F${Math.round(p.matPerG * CFG.UYU_RATE)}/g`, p.filUnit) +
     rowMulti('Tiempo de impresión', `${p.hours.toFixed(1)}&nbsp;h`, p.tiempoUnit) +
-    (colorRow || exRow ? '<div class="pr-sep"></div>' : '') +
-    colorRow + exRow +
+    (colorRow || exRow || promoRow ? '<div class="pr-sep"></div>' : '') +
+    colorRow + exRow + promoRow +
     `<div class="pr-sep"></div>
     <div class="pr-total"><span class="l">Total estimado</span><span class="v" id="totalVal"></span></div>`;
+
+  // Mostrar campo de código promo
+  document.getElementById('promoWrap').style.display = 'block';
 
   document.getElementById('result').classList.add('on');
 
@@ -1034,6 +1109,10 @@ document.getElementById('tabRef').addEventListener('click',  () => {
 function resetResult() {
   S.volumeCm3 = 0; S.tooBig = false;
   document.getElementById('result').classList.remove('on');
+  document.getElementById('promoWrap').style.display = 'none';
+  document.getElementById('promoFeedback').className = 'promo-feedback';
+  document.getElementById('promoInput').value = '';
+  promoApplied = null;
   document.title = 'Cotizador — Impresión 3D';
 }
 
@@ -1307,7 +1386,7 @@ Electricidad      : USD ${(p.elec*S.qty).toFixed(2)}
 Desgaste          : USD ${(p.wear*S.qty).toFixed(2)}
 Margen (30 %)     : incluido
 Ajuste color      : ${colorAdj} (×${CFG.COLOR_MULT[S.color].toFixed(2)})
-${S.express?`Express           : +USD ${p.expCost.toFixed(2)}\n`:''}──────────────────────────
+${S.express?`Express           : +USD ${p.expCost.toFixed(2)}\n`:''}${promoApplied ? `Descuento       : ${promoApplied.codigo} (−${promoApplied.descuento} %)\n` : ''}──────────────────────────
 TOTAL             : USD ${p.total.toFixed(2)} / $ ${Math.round(p.total*CFG.UYU_RATE).toLocaleString('es-UY')}
 
 Observaciones
