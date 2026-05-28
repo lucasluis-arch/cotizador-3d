@@ -1,0 +1,4 @@
+[
+  { "codigo": "AMIGOS10", "descuento": 10, "expira": "2026-12-31" },
+  { "codigo": "PROMO15", "descuento": 15, "expira": "2026-06-30" }
+]
