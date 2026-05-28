@@ -746,13 +746,13 @@ async function loadColors() {
       });
       if (resActual.ok) {
         const data = await resActual.json();
-        const colorActual = atob(data.content).trim().toLowerCase();
-        const match = availableColors.find(c => c.nombre.toLowerCase() === colorActual)
-          || availableColors.find(c => c.nombre.toLowerCase().includes(colorActual));
+        const colorActual = atob(data.content).trim();
+        const match = availableColors.find(c => c.nombre.toLowerCase() === colorActual.toLowerCase())
+          || availableColors.find(c => c.nombre.toLowerCase().includes(colorActual.toLowerCase()));
         if (match) {
           document.getElementById('colorCurrentImg').src  = match.url;
           document.getElementById('colorCurrentImg').alt  = match.nombre;
-          document.getElementById('colorCurrentName').textContent = match.nombre.charAt(0).toUpperCase() + match.nombre.slice(1);
+          document.getElementById('colorCurrentName').textContent = match.nombre;
           document.getElementById('colorCurrentNote').textContent =
             `Para reducir costos de impresión uso el material que tengo en mayor disponibilidad. En este momento imprimiría tu pieza en ${match.nombre}, que es el color con más stock.`;
         }
