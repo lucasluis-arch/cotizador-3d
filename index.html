@@ -59,7 +59,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .tabs{display:flex;gap:2px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:3px;margin-bottom:20px}
 .tab{flex:1;padding:8px 6px;border:none;border-radius:2px;background:transparent;font-family:var(--sans);font-size:.8rem;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap}
 .tab.on{background:var(--surface2);color:var(--text);border:1px solid var(--border-hi)}
-.drop{border:1px dashed var(--border-hi);border-radius:var(--r);padding:32px 20px;text-align:center;cursor:pointer;transition:all .18s;background:var(--bg)}
+.drop.loaded{border-color:var(--ok-bd);border-style:solid;background:var(--ok-bg)}
+.drop.loaded svg{opacity:.6;color:var(--ok)}
+.drop.loaded .drop-title{color:var(--ok)}
+.drop.loaded .drop-sub{color:var(--ok);opacity:.7}
 .drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-bg)}
 .drop:hover svg,.drop.over svg{opacity:.6;color:var(--accent)}
 .drop svg{width:24px;height:24px;margin:0 auto 10px;opacity:.18;display:block;color:var(--text);transition:all .18s}
@@ -411,12 +414,12 @@ body{animation:gridMove 4s linear infinite}
       <!-- Panel STL -->
       <div id="panelFile">
         <div class="drop" id="dropzone">
-          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg id="dropIcon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M16 3L28 9.5V22.5L16 29L4 22.5V9.5L16 3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
             <path d="M16 3V16M16 16L28 9.5M16 16L4 9.5M16 29V16" stroke="currentColor" stroke-width="1" stroke-opacity=".5"/>
           </svg>
-          <div class="drop-title">Arrastre su archivo STL aquí</div>
-          <div class="drop-sub" style="margin-top:4px">o haga clic para seleccionar</div>
+          <div class="drop-title" id="dropTitle">Arrastre su archivo STL aquí</div>
+          <div class="drop-sub" id="dropSub" style="margin-top:4px">o haga clic para seleccionar</div>
           <input type="file" id="fileInput" accept=".stl">
         </div>
         <div class="proc" id="proc"><div class="spinner"></div><span>Analizando geometría...</span></div>
@@ -1175,7 +1178,15 @@ function processFile(file) {
       const tooBig=dx>CFG.MAX_MM||dy>CFG.MAX_MM||dz_>CFG.MAX_MM;
       S.tooBig=tooBig;
       if (tooBig) { document.getElementById('stlSizeErr').classList.add('on'); S.volumeCm3=0; }
-      else { S.volumeCm3=volumeCm3; document.getElementById('resultLabel').textContent=file.name; render(); }
+      else {
+        S.volumeCm3=volumeCm3;
+        document.getElementById('resultLabel').textContent=file.name;
+        // Feedback visual en el dropzone
+        dz.classList.add('loaded');
+        document.getElementById('dropTitle').textContent = '✓ ' + file.name;
+        document.getElementById('dropSub').textContent   = 'Archivo cargado · haga clic para cambiar';
+        render();
+      }
       checkSubmit();
     } catch { document.getElementById('proc').classList.remove('on'); toast('err','Error al procesar','El archivo puede estar dañado o en un formato no compatible.'); }
   };
@@ -1185,6 +1196,9 @@ function processFile(file) {
 document.getElementById('resultRm').addEventListener('click',()=>{
   S.file=null; S.stlUrl=null; fi.value=''; resetResult();
   document.getElementById('stlSizeErr').classList.remove('on');
+  dz.classList.remove('loaded');
+  document.getElementById('dropTitle').textContent = 'Arrastre su archivo STL aquí';
+  document.getElementById('dropSub').textContent   = 'o haga clic para seleccionar';
   checkSubmit();
 });
 
